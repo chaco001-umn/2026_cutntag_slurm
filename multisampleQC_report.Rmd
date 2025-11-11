@@ -1,0 +1,112 @@
+---
+title: "Additional QC"
+author: "Jeremy Chacón"
+date: "`r Sys.Date()`"
+output: html_document
+params:
+  outdir: "/projects/standard/swernimo/shared/RI/2025_cutntag/Project_002_output"
+---
+
+## This file holds additional QC which could not be compiled in the multi-qc report.
+
+### Fraction Reads in Peak (FRiP)
+
+This table shows FRiP per sample / caller, and related statistics. These data include all peaks (including non-autosomes and blacklisted sites, which were usually only a small fraction of the data)
+
+```{r, echo=FALSE,message=FALSE}
+
+outdir = params["outdir"]
+qc_dir= paste0(outdir, "/qc_multisample")
+library(dplyr)
+library(readr)
+library(ggplot2)
+FRiP = rbind(read_table(paste0(qc_dir, "/genrich_FRiP.txt")) %>%
+               mutate(caller = "genrich"),
+             read_table(paste0(qc_dir, "/macs3_FRiP.txt")) %>%
+               mutate(caller = "macs3")) %>%
+  mutate(reads_per_peak = n_reads_in_peaks /n_peaks) %>%
+  arrange(sample, caller) %>%
+  select(sample, caller, FRiP, n_peaks, n_reads_in_peaks, reads_per_peak, n_mapped_reads)
+
+DT::datatable(FRiP)
+```
+
+### macs3 vs. Genrich
+
+This table shows the overlap in (and number of) calls by the two different peak callers, macs3 vs. Genrich. These data are only on autosomes and non-blacklisted sites. 
+
+- "n_macs3/genrich_peaks" is the number of peaks from that caller
+- "intersection" and "union" are in # of bases; they are how many bases intersected, and the total number peak bases
+- "n_intersections" is the number of intersecting peaks with at least 1 overlapping base.
+- "n_50_intersections" is the number of peaks that had >= 50% overlap
+- "jaccard" is the fraction of intersecting bases = intersection /  (union - intersection)
+
+```{r, echo=FALSE,message=FALSE}
+
+outdir = params["outdir"]
+qc_dir= paste0(outdir, "/qc_multisample")
+library(dplyr)
+library(readr)
+tbl = read_table(paste0(qc_dir, "/macs3_vs_genrich_intrasample_peak_overlap_metrics.txt")) 
+DT::datatable(tbl)
+```
+
+
+### Sample-Sample variation, macs3
+
+This shows the intersection between samples, within the macs3 caller. The columns are defined similarly to the previous section. 
+
+
+```{r, echo=FALSE,message=FALSE}
+
+outdir = params["outdir"]
+qc_dir= paste0(outdir, "/qc_multisample")
+library(dplyr)
+library(readr)
+tbl = read_table(paste0(qc_dir, "/macs3_intersample_peak_overlap_metrics.txt")) 
+DT::datatable(tbl)
+```
+
+And here are those data with the jaccard index plotted:
+
+```{r, echo =FALSE, message = FALSE}
+tbl %>%
+  mutate(jaccard = signif(jaccard,2)) %>%
+  ggplot(aes(x = sample1, y = sample2, 
+             label = jaccard, fill = jaccard))+
+  geom_tile()+
+  geom_text()+
+  theme_minimal(8)+
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+### Sample-Sample variation, genrich
+
+This shows the intersection between samples, within the genrich caller. The columns are defined similarly to the previous section. 
+
+
+```{r, echo=FALSE,message=FALSE}
+
+outdir = params["outdir"]
+qc_dir= paste0(outdir, "/qc_multisample")
+library(dplyr)
+library(readr)
+tbl = read_table(paste0(qc_dir, "/genrich_intersample_peak_overlap_metrics.txt")) 
+DT::datatable(tbl)
+```
+
+
+And here are those data with the jaccard index plotted:
+
+```{r, echo =FALSE, message = FALSE}
+tbl %>%
+  mutate(jaccard = signif(jaccard,2)) %>%
+  ggplot(aes(x = sample1, y = sample2, 
+             label = jaccard, fill = jaccard))+
+  geom_tile()+
+  geom_text()+
+  theme_minimal(8)+
+  theme(axis.text.x = element_text(angle = 90))
+
+```
