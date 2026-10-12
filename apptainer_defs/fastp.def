@@ -1,0 +1,20 @@
+Bootstrap: docker
+From: condaforge/miniforge3:25.3.1-0
+
+%labels
+    Author Chacón
+    Description "fastp"
+
+%environment
+    export PATH=/opt/bin:/opt/conda/envs/bio/bin:$PATH
+
+%post
+    set -eux
+
+    # Update and create conda environment
+    mamba create -y -n bio -c bioconda -c conda-forge \
+        fastp
+
+    # Clean up conda cache
+    conda clean -afy
+    
