@@ -1,0 +1,319 @@
+---
+title: "macs3 vs genrich"
+author: "Jeremy Chacón"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+---
+
+This report contains a high-level comparison of peaks discovered using macs3 and
+genrich, as well as differential binding statistics using each approach.
+
+First, here is a download link for the differential binding statistics
+testing SR vs. ST, including
+annotation of the peaks. I suggest reading through this report to understand how
+these tables. 
+
+```{r download_report, echo = FALSE}
+xfun::embed_file(
+path = "../plots_and_tables/SR_vs_ST_significance_tables_and_annotations.xlsx",
+text = "Download SR vs. ST excel statistics")
+
+```
+
+## Consensus peak statistics
+
+For each caller, the bed files across all samples were merged. Then, peaks were
+filtered. Liberally, peaks were retained if at least two samples had their own
+peak overlap with the merged peak. This resulted in 34k consensus peaks in macs3, and
+14k consensus peaks in genrich. 
+
+### Number of overlaps
+
+The following table shows basic summary statistics about the relatedness in 
+consensus peaks between the two callers. In general what we can note is that genrich peaks tend 
+to be larger, and that for each genrich peak there is an associated macs3 peak.
+Macs3 peaks tend to be smaller, and approximately half are unique to macs3.
+
+Note that if a peak in caller X overlapped with two peaks in caller Y, this will
+result in a count of 2 (depending on the metric).
+
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+library(readr)
+library(dplyr)
+library(kableExtra)
+readr::read_tsv("../plots_and_tables/caller_comparison_stats.tsv") %>%
+  kableExtra::kable() %>%
+  kableExtra::kable_classic()
+
+```
+
+### Peak annotations
+
+Consensus peaks were annotated using `ChIPseeker` and the hg38 genome. This
+package annotated peaks to their nearest feature. It was performed agnostic to
+strand, as the input data were also. 
+
+The next two graphs show the percent of peaks annotated to different gene features.
+
+#### feature percentages
+
+Note that macs3 had a larger percentage of intron and far distal peaks, whereas
+genrich tended to have a greater percentage of peaks. 
+
+![](../plots_and_tables/plot_anno.png)
+
+#### distances to TSS
+
+Note that most genrich peaks tend to be closer to TSS, which agrees with the
+previous plot.
+
+![](../plots_and_tables/plot_disttotss.png)
+
+#### gene functions
+
+Each peak had its nearest gene associated with it. There were 8287 unique
+gene IDs associated with the peaks. I used GO enrichment on this gene set to
+ask what GO BP (biological processes) terms are associated with the gene peaks. 
+The following dotplot shows the top 50 associated GO terms. Note that this is a
+very broad way of looking at things. 
+
+![](../plots_and_tables/enrichment_of_genrich_peaks.png)
+
+## Filtering and Unsupervised analyses
+
+The primary question is which gene's peaks experienced differential accessibility 
+as a consequence of a couple of biological treatments:
+
+1. SR (self-renewing) vs. ST (synciotroph)
+2. SR treated with UK vs. SR control (DMSO)
+
+The data were collected over multiple batches. Therefore, the first step was
+to examine the data in an unsupervised manner, to see whether batches could be treated
+together, or whether only the 4/30 data, which included all treatments, should be
+analyzed. 
+
+### Filtering 
+
+Peaks were first filtered by # of reads. Specifically, peaks were kept if at least
+two samples in a celltype had 20 reads in the peak. Interestingly, this removed 
+about 66% of the macs3 peaks, but only about 10% of the genrich peaks. After this,
+both callers had similar numbers of peaks (~12k).  If I compute the intersection
+between these filtered sets, I find that 10k peaks intersect between the callers.
+
+**Takehome: After filtering, macs3 and genrich have similar peak locations**
+
+### Correlation clustering heatmaps
+
+Next, sample read counts per peak, converted to CPM after normalization for depth,
+were correlated to each sample, and the resulting
+correlation matrix was subjected to hierarchical clustering. In the following plots,
+the tree shows clustering, and the color shows the R^2 between two samples' peak
+read counts. 
+
+Note that the genrich data tend to have higher R^2 in general, likely due to having
+wider peaks. Note also that the genrich data tended to separate treatments more 
+than the macs3 data. I am not sure why SAW013 does not cluster with the rest of the 04/30
+data, nor am I sure why SAW004 tends to cluster "correctly" (at least in genrich) 
+whereas the other two non-04/30 do not. 
+
+#### macs3
+
+![](../plots_and_tables/corrmap_macs3.png){width=70%}
+
+#### genrich
+
+![](../plots_and_tables/corrmap_genrich.png){width=70%}
+
+### Genes x Samples clustering heatmaps
+
+A different way to compare samples is to cluster them based on peak counts' CPM (counts-per-million),
+rather than based on R2 between samples. These are similar but more directly applicable to the
+peak counts. For these, I took the 500 peaks with the highest standard deviation in CPM across samples.
+
+The CPM were z-scaled per gene, so that positive colors indicate relatively higher accessibility. 
+
+Note that in both callers, we see that SAW002 and SAW005 appear as outliers again,
+and sometimes SAW013.
+
+#### macs3
+
+![](../plots_and_tables/vargenes_heatmap_macs3.png){width=70%}
+
+#### genrich
+
+![](../plots_and_tables/vargenes_heatmap_genrich.png){width=70%}
+
+
+
+### PCA
+
+Examining samples' positions in a principal components graph helps us
+understand the same thing as the hierarchical clustering: do treatments cluster
+together, and do dates/batches have a visible effect?
+
+Interestingly, both callers' results are similar. They show that the two "weird"
+samples drive most of the variance, but that 25% ish of the variance is driven
+by celltype and to some degree drug treatment. 
+
+#### macs3
+
+![](../plots_and_tables/pca_macs3.png){width=70%}
+
+#### genrich
+
+![](../plots_and_tables/pca_genrich.png){width=70%}
+
+If we ignore PC1 (which is largely driven by the "outliers") and examine PCs 2 and 3,
+we see that treatment effects drive most of the remaining variance:
+
+#### macs3 (pc2,3)
+
+![](../plots_and_tables/pca23_macs3.png){width=70%}
+
+#### genrich (pc2,3)
+
+![](../plots_and_tables/pca23_genrich.png){width=70%}
+
+### Unsupervised take-homes
+
+It is clear that samples SAW002, SAW005, which were collected on different dates 
+than the majority of the rest of the samples, have a different peak binding
+pattern. My suggestion would therefore be to remove all of the non 04/30 samples
+before statistical analysis. 
+
+It is less clear why SAW013 doesn't cluster with its treatment, but barring a good
+biological justification, I am less confident in removing it from the analysis.
+
+**For the remainder, I removed the non 04/30 samples.**
+
+## Differential Binding testing
+
+To test for differential binding / accessibility, I used `edgeR`. The dataset
+was only the samples from 04/30. Re-applying peak filtering to these 7 samples
+(again requiring a minimum of 20 reads per peak in at least two samples),
+13.3k peaks were retained in macs3, and 12.5k in genrich. I tested using
+the default TMM normalization and the upper quartile normalization and observed 
+no obvious differences between the two, so continued with the default TMM 
+recomendation. 
+
+Next I used the quasi-likelhood generalized linear model (`glmQLFit`) in `edgeR` to fit the 
+peak counts, and then tested for differences between self-renewing and synciotrophs
+using `glmQLFtest`.  With a cutoff for significance of FDR < 0.05 and abs(log2FC) > 1,
+there were this many differentially bound peaks:
+
+| caller | higher in ST | lower in ST |
+|--------|--------------|------------|
+| macs3 | 147 | 199 |
+| genrich | 188 | 137 |
+
+
+I will show summary graphs of these results a few ways, then
+do a simple comparison between macs3 and genrich.
+
+The results, which includes the data for all tested peaks, are in the excel spreadsheet
+downloadable at the top of this document. Filter those sheets by FDR < 0.05 and abs(logFC) > 1
+to derive the same sets of significant peaks I focus on below.
+
+### Volcano plots
+
+The way the statistics were setup, a positive logFC indicates higher binding (more reads) in
+the synciotrophs. I show volcano plots two ways: focusing just on the genes, and then with color-coding based upon the location of the peak relative to the nearest gene.
+
+#### macs3
+
+![](../plots_and_tables/volcano_macs3.png)
+
+#### genrich
+
+![](../plots_and_tables/volcano_genrich.png)
+
+#### macs3 color-coded
+
+![](../plots_and_tables/volcano_annotations_macs3.png)
+
+
+#### genrich color-coded
+
+![](../plots_and_tables/volcano_annotations_genrich.png)
+
+### bar plots of annotations
+
+The following graphs show how the significant peaks were annotated, relative to the
+nearest gene. There are two bars per annotation category, which reflect the count of
+peaks with logFC greater than or less than zero, meaning whether the differential binding
+indicated higher binding in ST or SR. Note that SR promotors experienced higher binding,
+but ST integenic peaks experienced higher binding.
+
+#### macs3 
+
+![](../plots_and_tables/barchart_annotations_macs3.png)
+
+#### genrich
+
+![](../plots_and_tables/barchart_annotations_genrich.png)
+### CPM plots
+
+For the top 20 significant peaks with higher / lower binding, I plot
+the CPM (counts-per-million). Reminder that this statistical test ignored drug, but
+I color the points by drug, so we can observe whether the overall trend appears to change
+due to the drug presence. Note that picking the top 20 was an arbitrary choice based on
+ease of visibility; these plots are most useful to get an intuitive sense for how to
+intepret logFC, check whether significant genes do appear to be different, and look for
+hints of effects of the drug. 
+
+I have labeled each significant peak by its peak name, nearest gene, and annotation.
+
+#### macs3
+
+![](../plots_and_tables/cpm_plots_top_DEGs_macs3.png)
+
+#### genrich
+
+![](../plots_and_tables/cpm_plots_top_DEGs_genrich.png)
+
+### differential binding heatmaps
+
+The last per-caller plots for the differential binding statistics are heatmaps
+of the CPM for all genes. This is very similar to the CPM plots above, except
+rather than showing log10(CPM), the log10(CPM) have been z-scaled to emphasize
+relative differences. 
+
+Secondly, I show the top 75 genes that had higher binding in SR and in ST. This 
+was about the limit I could do while letting the peak / gene names be visible.
+
+Note that it will be important to examine the annotations because some of the
+peaks are intergenic and the gene name is just the nearest one.
+
+#### macs3
+
+![](../plots_and_tables/heatmap_DEGs_macs3.png)
+
+
+#### genrich
+
+![](../plots_and_tables/heatmap_DEGs_genrich.png)
+
+### Quick caller comparison
+
+The following scatterplot show the log2FC for each caller, for only the genes which
+had significantly differential binding in either caller. I averaged the log2FC and FDR
+when multiple peaks were annotated to a single gene. 
+
+I think color-coded by which caller the gene was significant within. Note that many 
+genes had peaks with differential binding in both callers, and even when only one caller
+was significant, usually the log2FC was in the same direction in the other caller.
+
+![](../plots_and_tables/scatterplot_sig_genes.png)
+
+### Conclusions
+
+The two callers, post-filtering, are largely aligned in both where the peaks are and the logFC during peak differential binding. I think we can be confident in these results given that.
+
+In terms of statistics, a few hundred peaks showed evidence of differential binding, and many of these were annotated to the same genes in each caller. 
+
+Next steps could be to do pathway analysis on the differential peaks (or their associated genes), or do subsets of above plots for different annotation types. Additionally, we could try testing UK vs. no drug in the self-renewing samples. A warning that n=2 for that test so we shouldn't expect high power. I do not think we should test UK vs. no drug in ST, because n = 1 for the drug treatment.

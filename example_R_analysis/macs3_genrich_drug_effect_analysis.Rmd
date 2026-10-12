@@ -1,0 +1,115 @@
+---
+title: "macs3 vs genrich"
+author: "Jeremy Chacón"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+---
+
+This report is specific to one comparison: the effect of UK vs. mock in self-renewing samples. It begins post-filtering with the same dataset used in the previous report, then subsetted out just the 4/30 SR samples to do the statistics.
+
+The statistical contrast was set up as UK / mock, so positive log2FC indicates higher binding in UK. 
+
+**Significance table excel download:**
+
+```{r download_report, echo = FALSE}
+xfun::embed_file(
+path = "../plots_and_tables/drug_effect_in_SR_significance_tables_and_annotations.xlsx",
+text = "Download statistics")
+
+```
+
+
+## Differential Binding testing
+
+With a cutoff for significance of FDR < 0.05 and abs(log2FC) > 1,
+there were this many differentially bound peaks:
+
+| caller | lower in UK (logFC < 0) | higher in UK (logFC > 0) |
+|--------|--------------|------------|
+| macs3 | 148 | 29 |
+| genrich | 99 | 15 |
+
+
+### Volcano plots
+
+The way the statistics were setup, a positive logFC indicates higher binding (more reads) in
+the UK-treated SR cells. I show volcano plots two ways: focusing just on the genes, and then with color-coding based upon the location of the peak relative to the nearest gene.
+
+#### macs3
+
+![](../plots_and_tables/volcano_drug_effect_in_SR_macs3.png)
+
+#### genrich
+
+![](../plots_and_tables/volcano_drug_effect_in_SR_genrich.png)
+
+#### macs3 color-coded
+
+![](../plots_and_tables/volcano_drug_effect_in_SR_annotations_macs3.png)
+
+
+#### genrich color-coded
+
+![](../plots_and_tables/volcano_drug_effect_in_SR_annotations_genrich.png)
+
+### bar plots of annotations
+
+The following graphs show how the significant peaks were annotated, relative to the
+nearest gene. There are two bars per annotation category, which reflect the count of
+peaks with logFC greater than or less than zero, meaning whether the differential binding
+indicated higher binding in UK or mock. 
+
+#### macs3 
+
+![](../plots_and_tables/barchart_drug_effect_in_SR_annotations_macs3.png)
+
+#### genrich
+
+![](../plots_and_tables/barchart_drug_effect_in_SR_annotations_genrich.png)
+### CPM plots
+
+For the top 20 significant peaks with higher, and lower, binding, I plot
+the CPM (counts-per-million). Note that since there were < 20 peaks with higher binding in UK, there are fewer than 40 panels total. 
+
+I have labeled each significant peak by its peak name, nearest gene, and annotation.
+
+#### macs3
+
+![](../plots_and_tables/cpm_plots_drug_effect_in_SR_top_DEGs_macs3.png)
+
+#### genrich
+
+![](../plots_and_tables/cpm_plots_drug_effect_in_SR_top_DEGs_genrich.png)
+
+### differential binding heatmaps
+
+The last per-caller plots for the differential binding statistics are heatmaps
+of the CPM for all genes. This is very similar to the CPM plots above, except
+rather than showing log10(CPM), the log10(CPM) have been z-scaled to emphasize
+relative differences. 
+
+#### macs3
+
+![](../plots_and_tables/heatmap_drug_effect_in_SR_DEGs_macs3.png)
+
+
+#### genrich
+
+![](../plots_and_tables/heatmap_drug_effect_in_SR_DEGs_genrich.png)
+
+### Quick caller comparison
+
+The following scatterplot show the log2FC for each caller, for only the genes which
+had significantly differential binding in either caller. I averaged the log2FC and FDR
+when multiple peaks were annotated to a single gene. 
+
+I think color-coded by which caller the gene was significant within. Note that many 
+genes had peaks with differential binding in both callers, and even when only one caller
+was significant, usually the log2FC was in the same direction in the other caller.
+
+![](../plots_and_tables/scatterplot__drug_effect_in_SR_sig_genes.png)
+This concludes the report on the effect of UK in self-renewing cells. Please email Jeremy (chaco001@umn.edu) with any questions. Thank you!
