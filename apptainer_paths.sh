@@ -53,3 +53,8 @@ gopeaks(){
     apptainer exec -B ${bind_paths} ${apptainer_dir}/gopeaks.sif gopeaks "$@"
 }
 export -f gopeaks
+
+featureCounts(){
+    apptainer exec -B ${bind_paths} ${apptainer_dir}/featurecounts.sif featureCounts "$@"
+}
+export -f featureCounts

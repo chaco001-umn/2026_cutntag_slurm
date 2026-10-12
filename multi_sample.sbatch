@@ -99,11 +99,52 @@ for sample in ${samples[@]}; do
     echo -e "${sample/_peaks.narrowPeak/}\t${sample_peaks_macs3}\t${sample_peaks_genrich}\t${jaccard}\t${half_overlap}" >> $outdir/qc_multisample/macs3_vs_genrich_intrasample_peak_overlap_metrics.txt
 done
 
+### We decided we would merge macs3 calls, and separately genrich calls, and proceed forwards with each set
+macs3_merge=${outdir}/macs3/allsamples_merged.bed
+cat ${outdir}/macs3/*.narrowPeak > ${macs3_merge}.tmp
+sort -k1,1 -k2,2n ${macs3_merge}.tmp > ${macs3_merge}.sorted.tmp
+bedtools merge -i ${macs3_merge}.sorted.tmp > ${macs3_merge}
+rm ${macs3_merge}.tmp
+rm ${macs3_merge}.sorted.tmp
+# find the # of peaks in each merged peak
+bedtools intersect -c -a ${macs3_merge} -b ${outdir}/macs3/*.narrowPeak > ${macs3_merge/.bed/}.intersections.bed
+# get a bed file of peaks with >=2 intersections
+awk '$4 >= 2' ${macs3_merge/.bed/}.intersections.bed > ${macs3_merge/.bed/}.filtered.bed
+# make an SAF file for featurecounts
+awk 'BEGIN{OFS="\t"} {print "peak_"NR, $1, $2+1, $3, "."}' ${macs3_merge/.bed/}.filtered.bed > ${macs3_merge/.bed/}.filtered.saf
+# count (-p is paired, -B both aligned, -C skip ones where reads aligned to diff chroms or strands, --countReadPairs counts frags not reads, -Q quality, --primary primary mapping only)
+featureCounts -a ${macs3_merge/.bed/}.filtered.saf \
+    -F SAF \
+    -p \
+    -T 8 \
+    -Q 0 \
+     --countReadPairs \
+    -o ${outdir}/macs3/peak_counts \
+    ${outdir}/dedup/*.bam
+    
+    
+genrich_merge=${outdir}/genrich/allsamples_merged.bed
+cat ${outdir}/genrich/*.narrowPeak > ${genrich_merge}.tmp
+sort -k1,1 -k2,2n ${genrich_merge}.tmp > ${genrich_merge}.sorted.tmp
+bedtools merge -i ${genrich_merge}.sorted.tmp > ${genrich_merge}
+rm ${genrich_merge}.tmp
+rm ${genrich_merge}.sorted.tmp
+# find the # of peaks in each merged peak
+bedtools intersect -c -a ${genrich_merge} -b ${outdir}/genrich/*.narrowPeak > ${genrich_merge/.bed/}.intersections.bed
+# get a bed file of peaks with >=2 intersections
+awk '$4 >= 2' ${genrich_merge/.bed/}.intersections.bed > ${genrich_merge/.bed/}.filtered.bed
+# make an SAF file for featurecounts
+awk 'BEGIN{OFS="\t"} {print "peak_"NR, $1, $2+1, $3, "."}' ${genrich_merge/.bed/}.filtered.bed > ${genrich_merge/.bed/}.filtered.saf
+# count (-p is paired, -B both aligned, -C skip ones where reads aligned to diff chroms or strands, --countReadPairs counts frags not reads, -Q quality, --primary primary mapping only)
+featureCounts -a ${genrich_merge/.bed/}.filtered.saf \
+    -F SAF \
+    -p \
+    -T 8 \
+    -Q 0 \
+     --countReadPairs \
+    -o ${outdir}/genrich/peak_counts \
+    ${outdir}/dedup/*.bam
 
-### Now get consensuses across samples (within treatments), then union across treatments
-
-
-### then feature counts
 
 
 exit 0

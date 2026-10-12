@@ -122,7 +122,7 @@ if [ ! -f ${outdir}/checkpoints/macs3_${samplename}.done ]; then
         --cutoff-analysis \
         --extsize 200 \
         --keep-dup all \
-        --qvalue 0.05
+        --qvalue 0.1
         
     # original
     #macs3 callpeak -t ${outdir}/dedup/${samplename}.bam \
@@ -161,7 +161,7 @@ if [ ! -f ${outdir}/checkpoints/genrich_${samplename}.done ]; then
         -o ${outdir}/genrich/${samplename}_peaks.narrowPeak \
         -f ${outdir}/genrich/${samplename}.log \
         -j -y \
-        -q 0.1
+        -q 0.25
     
     # original    
     #    Genrich -t ${outdir}/bowtie2/${samplename}.namesort.bam \
@@ -194,7 +194,7 @@ if [ ! -f ${outdir}/checkpoints/seacr_${samplename}.done ]; then
     bedtools genomecov -bg -i ${outdir}/seacr/${samplename}.fragments.bed -g ${genome_fai} > ${outdir}/seacr/${samplename}.fragments.bedgraph
     
     seacr ${outdir}/seacr/${samplename}.fragments.bedgraph \
-        0.05 \
+        0.1 \
         norm \
         relaxed \
         ${outdir}/seacr/${samplename}
@@ -209,7 +209,7 @@ if [ ! -f ${outdir}/checkpoints/gopeaks_${samplename}.done ]; then
     echo "running gopeaks..."
 
     gopeaks -b ${outdir}/dedup/${samplename}.bam \
-        -p 0.05 \
+        -p 0.1 \
         -o ${outdir}/gopeaks/${samplename}
     
         
